@@ -1,6 +1,6 @@
 import React from "react";
 
-const Navbar = () => {
+const Navbar = ({ setCurrentPage, currentPage }) => {
   const style = {
     display: "flex",
     justifyContent: "center",
@@ -14,14 +14,16 @@ const Navbar = () => {
     width: "100%",
     zIndex: 1000,
     boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+    gap: "30px",
   };
 
-  const linkStyle = {
-    margin: "0 15px",
+  const linkStyle = (page) => ({
     cursor: "pointer",
     textDecoration: "none",
-    color: "black",
-  };
+    color: currentPage === page ? "#FF1493" : "black", // highlight active
+    fontWeight: currentPage === page ? "bold" : "normal",
+    transition: "0.3s",
+  });
 
   return (
     <>
@@ -51,17 +53,23 @@ const Navbar = () => {
       `}</style>
 
       <nav style={style}>
-        <a href="#home" style={linkStyle}>
+        <a onClick={() => setCurrentPage("home")} style={linkStyle("home")}>
           Home
         </a>
-        <a href="#browse" style={linkStyle}>
+        <a onClick={() => setCurrentPage("browse")} style={linkStyle("browse")}>
           Browse
         </a>
-        <a href="#playlists" style={linkStyle}>
+        <a
+          onClick={() => setCurrentPage("playlists")}
+          style={linkStyle("playlists")}
+        >
           Playlists
         </a>
-        <a href="#account" style={linkStyle}>
+        <a onClick={() => setCurrentPage("account")} style={linkStyle("account")}>
           Account
+        </a>
+        <a onClick={() => setCurrentPage("login")} style={linkStyle("login")}>
+          Logout
         </a>
       </nav>
     </>
