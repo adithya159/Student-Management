@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { register as registerAction } from '../../redux/slices/authSlice';
+import { addAchievement } from '../../redux/slices/achievementSlice';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Card, CardBody } from '../common/Card';
@@ -16,7 +18,8 @@ export const Register = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { register } = useAuth();
+  const dispatch = useAppDispatch();
+  const { achievements } = useAppSelector((state) => state.achievements);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -48,27 +51,36 @@ export const Register = () => {
       return;
     }
 
-    // Check if email already exists
-    const existingUsers = JSON.parse(localStorage.getItem('students') || '[]');
-    if (existingUsers.some((user) => user.email === formData.email)) {
+    // Check if email already exists in achievements
+    if (achievements.some((ach) => ach.studentEmail === formData.email)) {
       setError('Email already registered');
       return;
     }
 
-    // Register user
+    // Create new student achievement record
     const newStudent = {
       id: Date.now().toString(),
+      studentId: Date.now().toString(),
+      studentName: formData.name,
+      studentEmail: formData.email,
+      password: formData.password,
+      rollNumber: formData.rollNumber,
+      achievements: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    // Add to Redux achievements
+    dispatch(addAchievement(newStudent));
+
+    // Register user in auth
+    dispatch(registerAction({
+      id: newStudent.studentId,
       name: formData.name,
       email: formData.email,
       password: formData.password,
       rollNumber: formData.rollNumber,
       role: 'student',
-      createdAt: new Date().toISOString(),
-    };
-
-    // Save to localStorage
-    existingUsers.push(newStudent);
-    localStorage.setItem('students', JSON.stringify(existingUsers));
+    }));
 
     setSuccess('Registration successful! Redirecting to login...');
     setTimeout(() => {

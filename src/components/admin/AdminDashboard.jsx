@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useAchievements } from '../../context/AchievementContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { addAchievement, updateAchievement, deleteAchievement, selectAllAchievements, selectCategories } from '../../redux/slices/achievementSlice';
 import { Card, CardHeader, CardBody } from '../common/Card';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
@@ -11,8 +11,11 @@ import { Plus, Edit, Trash2, Award, TrendingUp, Users, Trophy } from 'lucide-rea
 import { AchievementChart } from './AchievementChart';
 
 export const AdminDashboard = () => {
-  const { achievements, categories, addAchievement, updateAchievement, deleteAchievement } = useAchievements();
-  const { getAllStudents } = useAuth();
+  const dispatch = useAppDispatch();
+  const achievements = useAppSelector(selectAllAchievements);
+  const categories = useAppSelector(selectCategories);
+  const { achievements: allAchievements } = useAppSelector((state) => state.achievements);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,8 +23,35 @@ export const AdminDashboard = () => {
   const [selectedStudentEmail, setSelectedStudentEmail] = useState('');
 
   const registeredStudents = useMemo(() => {
-    return getAllStudents();
-  }, []);
+    const studentsMap = new Map();
+    
+    // Add registered students from localStorage
+    const localStudents = JSON.parse(localStorage.getItem('students') || '[]');
+    localStudents.forEach((s) => {
+      if (!studentsMap.has(s.email)) {
+        studentsMap.set(s.email, {
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          rollNumber: s.rollNumber || '',
+        });
+      }
+    });
+    
+    // Also add students from achievements (for mock data)
+    allAchievements.forEach((ach) => {
+      if (ach.studentEmail && !studentsMap.has(ach.studentEmail)) {
+        studentsMap.set(ach.studentEmail, {
+          id: ach.studentId,
+          name: ach.studentName,
+          email: ach.studentEmail,
+          rollNumber: ach.rollNumber || '',
+        });
+      }
+    });
+    
+    return Array.from(studentsMap.values());
+  }, [allAchievements]);
 
   const stats = useMemo(() => {
     const uniqueStudents = new Set(achievements.map((a) => a.studentEmail || a.studentId)).size;
@@ -113,16 +143,16 @@ export const AdminDashboard = () => {
 
   const onSubmit = handleSubmit((formValues) => {
     if (editingAchievement) {
-      updateAchievement(editingAchievement.id, formValues);
+      dispatch(updateAchievement({ id: editingAchievement.id, achievement: formValues }));
     } else {
-      addAchievement(formValues);
+      dispatch(addAchievement(formValues));
     }
     closeModal();
   });
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this achievement?')) {
-      deleteAchievement(id);
+      dispatch(deleteAchievement(id));
     }
   };
 

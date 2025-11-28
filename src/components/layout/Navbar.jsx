@@ -1,16 +1,18 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { logout as logoutAction } from '../../redux/slices/authSlice';
+import { toggleTheme } from '../../redux/slices/themeSlice';
 import { Award, LogOut, Moon, Sun, User } from 'lucide-react';
 import { Button } from '../common/Button';
 
 export const Navbar = () => {
-  const { user, logout } = useAuth();
-  const { darkMode, toggleDarkMode } = useTheme();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+  const { isDark } = useAppSelector((state) => state.theme);
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
+    dispatch(logoutAction());
     navigate('/login');
   };
 
@@ -30,11 +32,11 @@ export const Navbar = () => {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={toggleDarkMode}
+              onClick={() => dispatch(toggleTheme())}
               className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               aria-label="Toggle dark mode"
             >
-              {darkMode ? <Sun className="text-yellow-400" size={20} /> : <Moon className="text-gray-600" size={20} />}
+              {isDark ? <Sun className="text-yellow-400" size={20} /> : <Moon className="text-gray-600" size={20} />}
             </button>
 
             {user && (

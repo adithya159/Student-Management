@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { login as loginAction } from '../../redux/slices/authSlice';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Card, CardBody } from '../common/Card';
@@ -11,7 +12,9 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [error, setError] = useState('');
-  const { login, getAllStudents } = useAuth();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+  const { achievements } = useAppSelector((state) => state.achievements);
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
@@ -31,7 +34,7 @@ export const Login = () => {
 
       const admin = mockAdmins[email];
       if (admin && password === 'password') {
-        login({ ...admin, email });
+        dispatch(loginAction({ ...admin, email }));
         navigate('/admin');
       } else {
         setError('Invalid admin credentials. Try: admin@school.com / password');
@@ -39,12 +42,48 @@ export const Login = () => {
       return;
     }
 
-    // Check student login
-    const students = getAllStudents();
-    const student = students.find((s) => s.email === email && s.password === password);
+    // Check student login - first check registered students in localStorage
+    const registeredStudents = JSON.parse(localStorage.getItem('students') || '[]');
+    const registeredStudent = registeredStudents.find((s) => s.email === email && s.password === password);
 
-    if (student) {
-      login({ ...student, role: 'student' });
+    if (registeredStudent) {
+      dispatch(loginAction({ 
+        email: registeredStudent.email,
+        name: registeredStudent.name,
+        id: registeredStudent.id,
+        rollNumber: registeredStudent.rollNumber,
+        role: 'student',
+      }));
+      navigate('/student');
+      return;
+    }
+
+    // Fallback: check mock students in achievements (for backward compatibility)
+    const studentMap = new Map();
+    achievements.forEach((ach) => {
+      if (ach.studentEmail && ach.password && !studentMap.has(ach.studentEmail)) {
+        // Only add if password is present (real student)
+        studentMap.set(ach.studentEmail, {
+          email: ach.studentEmail,
+          name: ach.studentName,
+          id: ach.studentId,
+          password: ach.password,
+          rollNumber: ach.rollNumber || '',
+        });
+      }
+    });
+
+    const mockStudents = Array.from(studentMap.values());
+    const mockStudent = mockStudents.find((s) => s.email === email && s.password === password);
+
+    if (mockStudent) {
+      dispatch(loginAction({ 
+        email: mockStudent.email,
+        name: mockStudent.name,
+        id: mockStudent.id,
+        rollNumber: mockStudent.rollNumber,
+        role: 'student',
+      }));
       navigate('/student');
     } else {
       setError('Invalid email or password');

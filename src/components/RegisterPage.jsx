@@ -1,109 +1,149 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAppDispatch } from '../../redux/hooks';
+import { login as loginAction } from '../../redux/slices/authSlice';
+import { Button } from '../common/Button';
+import { Input } from '../common/Input';
+import { Card, CardBody } from '../common/Card';
+import { Award, UserPlus } from 'lucide-react';
 
-const RegisterPage = ({ setCurrentPage }) => {
+export const RegisterPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
-  const style = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100vh',
-    background: 'linear-gradient(to bottom right, #FFC0CB, #FFB6C1)',
-    fontFamily: 'Arial, sans-serif',
-  };
-
-  const formContainer = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    padding: '40px 30px',
-    borderRadius: '20px',
-    boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-    width: '90%',
-    maxWidth: '400px',
-  };
-
-  const input = {
-    width: '100%',
-    padding: '12px 15px',
-    margin: '10px 0',
-    borderRadius: '25px',
-    border: '1px solid #ccc',
-    outline: 'none',
-    fontSize: '1rem',
-  };
-
-  const button = {
-    width: '100%',
-    padding: '12px 0',
-    marginTop: '15px',
-    borderRadius: '25px',
-    border: 'none',
-    backgroundColor: '#FF69B4',
-    color: 'white',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    transition: '0.3s',
-  };
-
-  const handleRegister = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setCurrentPage('home'); // go to Home after registration
+    setError('');
+    setSuccess('');
+
+    if (!name || !email || !password || !rollNumber) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    // Check if email already exists
+    const students = JSON.parse(localStorage.getItem('students') || '[]');
+    const emailExists = students.some((s) => s.email === email);
+    if (emailExists) {
+      setError('Email already registered');
+      return;
+    }
+
+    // Store student credentials separately in localStorage
+    const studentId = 'STU' + Date.now().toString().slice(-4);
+    const students = JSON.parse(localStorage.getItem('students') || '[]');
+    students.push({
+      id: studentId,
+      name: name,
+      email: email,
+      password: password,
+      rollNumber: rollNumber,
+    });
+    localStorage.setItem('students', JSON.stringify(students));
+
+    // Auto-login the newly registered student
+    dispatch(loginAction({
+      email: email,
+      name: name,
+      id: studentId,
+      rollNumber: rollNumber,
+      role: 'student',
+    }));
+
+    setSuccess('Registration successful! Redirecting to dashboard...');
+    setTimeout(() => {
+      navigate('/student');
+    }, 1000);
   };
 
   return (
-    <div style={style}>
-      <div style={formContainer}>
-        <h1 style={{ marginBottom: '20px', color: '#FF69B4' }}>MusicStream Register</h1>
-        <form onSubmit={handleRegister} style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={input}
-            required
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={input}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={input}
-            required
-          />
-          <button
-            type="submit"
-            style={button}
-            onMouseOver={(e) => (e.target.style.backgroundColor = '#FF1493')}
-            onMouseOut={(e) => (e.target.style.backgroundColor = '#FF69B4')}
-          >
-            Register
-          </button>
-        </form>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardBody>
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-full mb-4">
+              <UserPlus className="text-white" size={32} />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Register</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Create your student account</p>
+          </div>
 
-        <p
-          style={{ marginTop: '15px', fontSize: '0.9rem', color: '#666', cursor: 'pointer' }}
-          onClick={() => setCurrentPage('login')}
-        >
-          Already have an account? Login
-        </p>
-      </div>
+          <form onSubmit={handleSubmit}>
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-400 rounded-lg text-sm">
+                {success}
+              </div>
+            )}
+
+            <Input
+              label="Full Name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your full name"
+              required
+            />
+
+            <Input
+              label="Roll Number"
+              type="text"
+              value={rollNumber}
+              onChange={(e) => setRollNumber(e.target.value)}
+              placeholder="e.g., CSE001"
+              required
+            />
+
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              required
+            />
+
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter a password (min 6 characters)"
+              required
+            />
+
+            <Button type="submit" className="w-full flex items-center justify-center gap-2">
+              <UserPlus size={20} />
+              Create Account
+            </Button>
+
+            <div className="text-center mt-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Already have an account?{' '}
+                <Link to="/login" className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 font-medium">
+                  Login here
+                </Link>
+              </p>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
     </div>
   );
 };
-
-export default RegisterPage;

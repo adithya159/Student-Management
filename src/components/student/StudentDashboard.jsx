@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useAchievements } from '../../context/AchievementContext';
+import { useAppSelector } from '../../redux/hooks';
+import { selectCategories } from '../../redux/slices/achievementSlice';
 import { Card, CardHeader, CardBody } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Award, Trophy, TrendingUp, Calendar, Medal, Star, Download } from 'lucide-react';
@@ -8,13 +8,15 @@ import { Button } from '../common/Button';
 import { jsPDF } from 'jspdf';
 
 export const StudentDashboard = () => {
-  const { user } = useAuth();
-  const { achievements, categories } = useAchievements();
+  const { user } = useAppSelector((state) => state.auth);
+  const allAchievements = useAppSelector((state) => state.achievements.achievements);
+  const categories = useAppSelector(selectCategories);
   const [filterCategory, setFilterCategory] = useState('');
   const [sortBy, setSortBy] = useState('date');
 
+  // Get achievements for current user
   const studentAchievements = useMemo(() => {
-    let filtered = achievements.filter((a) => a.studentEmail === user.email || a.studentId === user.id);
+    let filtered = allAchievements.filter((a) => a.studentEmail === user?.email || a.studentId === user?.id);
 
     if (filterCategory) {
       filtered = filtered.filter((a) => a.category === filterCategory);
@@ -28,7 +30,7 @@ export const StudentDashboard = () => {
       }
       return 0;
     });
-  }, [achievements, user.email, user.id, filterCategory, sortBy]);
+  }, [allAchievements, user?.email, user?.id, filterCategory, sortBy]);
 
   const stats = useMemo(() => {
     const total = studentAchievements.length;
@@ -63,7 +65,6 @@ export const StudentDashboard = () => {
     const margin = 15;
     const maxWidth = pageWidth - 2 * margin;
 
-    // Helper function to add text with word wrapping
     const addWrappedText = (text, x, y, maxWidth, fontSize = 11) => {
       pdf.setFontSize(fontSize);
       const lines = pdf.splitTextToSize(text, maxWidth);
@@ -71,7 +72,6 @@ export const StudentDashboard = () => {
       return y + lines.length * (fontSize / 2.5);
     };
 
-    // Check if we need a new page
     const checkPageBreak = (requiredSpace) => {
       if (yPosition + requiredSpace > pageHeight - 10) {
         pdf.addPage();
@@ -93,11 +93,11 @@ export const StudentDashboard = () => {
 
     pdf.setFontSize(11);
     pdf.setFont(undefined, 'normal');
-    pdf.text(`Name: ${user.name}`, margin, yPosition);
+    pdf.text(`Name: ${user?.name || 'N/A'}`, margin, yPosition);
     yPosition += 6;
-    pdf.text(`Email: ${user.email}`, margin, yPosition);
+    pdf.text(`Email: ${user?.email || 'N/A'}`, margin, yPosition);
     yPosition += 6;
-    pdf.text(`Roll Number: ${user.id}`, margin, yPosition);
+    pdf.text(`Roll Number: ${user?.id || 'N/A'}`, margin, yPosition);
     yPosition += 6;
     pdf.text(`Generated Date: ${new Date().toLocaleDateString()}`, margin, yPosition);
     yPosition += 12;
@@ -146,13 +146,11 @@ export const StudentDashboard = () => {
       studentAchievements.forEach((achievement, index) => {
         checkPageBreak(30);
 
-        // Achievement title
         pdf.setFont(undefined, 'bold');
         pdf.setFontSize(11);
         yPosition = addWrappedText(`${index + 1}. ${achievement.title}`, margin, yPosition, maxWidth, 11);
         yPosition += 2;
 
-        // Achievement details
         pdf.setFont(undefined, 'normal');
         pdf.setFontSize(10);
 
@@ -175,7 +173,6 @@ export const StudentDashboard = () => {
           yPosition += 5;
         }
 
-        // Description
         if (achievement.description) {
           yPosition = addWrappedText(`Description: ${achievement.description}`, margin + 5, yPosition + 2, maxWidth - 5, 9);
         }
@@ -188,24 +185,22 @@ export const StudentDashboard = () => {
       pdf.text('No achievements recorded yet.', margin, yPosition);
     }
 
-    // Footer
     pdf.setFontSize(9);
     pdf.setTextColor(128, 128, 128);
     pdf.text(
-      `Achievement Tracker Report - ${user.name}`,
+      `Achievement Tracker Report - ${user?.name || 'Student'}`,
       margin,
       pageHeight - 10
     );
 
-    // Save PDF
-    pdf.save(`${user.name.replace(/\s+/g, '_')}_achievements_report.pdf`);
+    pdf.save(`${user?.name?.replace(/\s+/g, '_') || 'achievements'}_report.pdf`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome, {user.name}!</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome, {user?.name}!</h1>
           <p className="text-gray-600 dark:text-gray-400">Track and showcase your extracurricular achievements</p>
         </div>
 
