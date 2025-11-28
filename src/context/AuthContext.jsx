@@ -27,18 +27,37 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
+  const register = (studentData) => {
+    const students = JSON.parse(localStorage.getItem('students') || '[]');
+    const newStudent = {
+      ...studentData,
+      id: Date.now().toString(),
+      role: 'student',
+      createdAt: new Date().toISOString(),
+    };
+    students.push(newStudent);
+    localStorage.setItem('students', JSON.stringify(students));
+    return newStudent;
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
   };
 
+  const getAllStudents = () => {
+    return JSON.parse(localStorage.getItem('students') || '[]');
+  };
+
   const value = {
     user,
     login,
+    register,
     logout,
     loading,
     isAdmin: user?.role === 'admin',
     isStudent: user?.role === 'student',
+    getAllStudents,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

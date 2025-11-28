@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -11,7 +11,7 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const { login, getAllStudents } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
@@ -23,19 +23,31 @@ export const Login = () => {
       return;
     }
 
-    const mockUsers = {
-      'admin@school.com': { role: 'admin', name: 'Admin User', id: 'ADMIN001' },
-      'john@student.com': { role: 'student', name: 'John Doe', id: 'STU001' },
-      'jane@student.com': { role: 'student', name: 'Jane Smith', id: 'STU002' },
-    };
+    // Check admin login
+    if (role === 'admin') {
+      const mockAdmins = {
+        'admin@school.com': { role: 'admin', name: 'Admin User', id: 'ADMIN001' },
+      };
 
-    const user = mockUsers[email];
+      const admin = mockAdmins[email];
+      if (admin && password === 'password') {
+        login({ ...admin, email });
+        navigate('/admin');
+      } else {
+        setError('Invalid admin credentials. Try: admin@school.com / password');
+      }
+      return;
+    }
 
-    if (user && password === 'password') {
-      login({ ...user, email });
-      navigate(user.role === 'admin' ? '/admin' : '/student');
+    // Check student login
+    const students = getAllStudents();
+    const student = students.find((s) => s.email === email && s.password === password);
+
+    if (student) {
+      login({ ...student, role: 'student' });
+      navigate('/student');
     } else {
-      setError('Invalid credentials. Try: admin@school.com / password or john@student.com / password');
+      setError('Invalid email or password');
     }
   };
 
@@ -92,6 +104,17 @@ export const Login = () => {
               <LogIn size={20} />
               Login
             </Button>
+
+            {role === 'student' && (
+              <div className="text-center mt-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Don't have an account?{' '}
+                  <Link to="/register" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                    Register here
+                  </Link>
+                </p>
+              </div>
+            )}
           </form>
         </CardBody>
       </Card>

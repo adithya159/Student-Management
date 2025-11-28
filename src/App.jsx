@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AchievementProvider } from './context/AchievementContext';
 import { Login } from './components/auth/Login';
+import { Register } from './components/auth/Register';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -16,6 +17,7 @@ function App() {
           <Router>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route
                 path="/admin"
                 element={

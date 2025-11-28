@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAchievements } from '../../context/AchievementContext';
+import { useAuth } from '../../context/AuthContext';
 import { Card, CardHeader, CardBody } from '../common/Card';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
@@ -11,13 +12,19 @@ import { AchievementChart } from './AchievementChart';
 
 export const AdminDashboard = () => {
   const { achievements, categories, addAchievement, updateAchievement, deleteAchievement } = useAchievements();
+  const { getAllStudents } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [selectedStudentEmail, setSelectedStudentEmail] = useState('');
+
+  const registeredStudents = useMemo(() => {
+    return getAllStudents();
+  }, []);
 
   const stats = useMemo(() => {
-    const uniqueStudents = new Set(achievements.map((a) => a.studentId)).size;
+    const uniqueStudents = new Set(achievements.map((a) => a.studentEmail || a.studentId)).size;
     const totalPoints = achievements.reduce((sum, a) => sum + a.points, 0);
     const avgPoints = uniqueStudents > 0 ? (totalPoints / uniqueStudents).toFixed(0) : 0;
 
@@ -44,8 +51,7 @@ export const AdminDashboard = () => {
 
   const validate = (values) => {
     const errors = {};
-    if (!values.studentId) errors.studentId = 'Student ID is required';
-    if (!values.studentName) errors.studentName = 'Student name is required';
+    if (!values.studentEmail) errors.studentEmail = 'Student email is required';
     if (!values.title) errors.title = 'Title is required';
     if (!values.category) errors.category = 'Category is required';
     if (!values.date) errors.date = 'Date is required';
@@ -55,6 +61,7 @@ export const AdminDashboard = () => {
   };
 
   const initialValues = {
+    studentEmail: '',
     studentId: '',
     studentName: '',
     title: '',
@@ -71,13 +78,28 @@ export const AdminDashboard = () => {
     validate
   );
 
+  const handleStudentSelect = (email) => {
+    const student = registeredStudents.find((s) => s.email === email);
+    if (student) {
+      setValues({
+        ...values,
+        studentEmail: email,
+        studentName: student.name,
+        studentId: student.rollNumber,
+      });
+      setSelectedStudentEmail(email);
+    }
+  };
+
   const openModal = (achievement = null) => {
     if (achievement) {
       setEditingAchievement(achievement);
       setValues(achievement);
+      setSelectedStudentEmail(achievement.studentEmail);
     } else {
       setEditingAchievement(null);
       resetForm();
+      setSelectedStudentEmail('');
     }
     setIsModalOpen(true);
   };
@@ -86,6 +108,7 @@ export const AdminDashboard = () => {
     setIsModalOpen(false);
     setEditingAchievement(null);
     resetForm();
+    setSelectedStudentEmail('');
   };
 
   const onSubmit = handleSubmit((formValues) => {
@@ -173,148 +196,178 @@ export const AdminDashboard = () => {
           <AchievementChart achievements={achievements} categories={categories} />
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Achievement Records</h2>
-              <Button onClick={() => openModal()} className="flex items-center gap-2">
-                <Plus size={20} />
-                Add Achievement
-              </Button>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <input
-                type="text"
-                placeholder="Search by student name, ID, or title..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              />
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Categories</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Student
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Achievement
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Level
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Points
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredAchievements.map((achievement) => (
-                    <tr key={achievement.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">{achievement.studentName}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{achievement.studentId}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-sm text-gray-900 dark:text-white">{achievement.title}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{achievement.description}</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <Badge variant="primary">{achievement.category}</Badge>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {new Date(achievement.date).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <Badge variant="success">{achievement.level}</Badge>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {achievement.points}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openModal(achievement)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(achievement.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredAchievements.length === 0 && (
-              <div className="text-center py-12">
-                <Trophy className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-500 dark:text-gray-400">No achievements found</p>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Registered Students</h2>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {registeredStudents.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No students registered yet</p>
+                ) : (
+                  registeredStudents.map((student) => (
+                    <div key={student.id} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                      <p className="font-medium text-sm text-gray-900 dark:text-white">{student.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{student.rollNumber}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 break-all">{student.email}</p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          handleStudentSelect(student.email);
+                          openModal();
+                        }}
+                        className="w-full text-xs"
+                      >
+                        Add Achievement
+                      </Button>
+                    </div>
+                  ))
+                )}
               </div>
-            )}
-          </CardBody>
-        </Card>
+            </CardBody>
+          </Card>
+
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Achievement Records</h2>
+                <Button onClick={() => openModal()} className="flex items-center gap-2">
+                  <Plus size={20} />
+                  Add Achievement
+                </Button>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <input
+                  type="text"
+                  placeholder="Search by student name, ID, or title..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Student
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Achievement
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Level
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Points
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredAchievements.map((achievement) => (
+                      <tr key={achievement.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{achievement.studentName}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{achievement.studentId}</div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="text-sm text-gray-900 dark:text-white">{achievement.title}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{achievement.description}</div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <Badge variant="primary">{achievement.category}</Badge>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {new Date(achievement.date).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <Badge variant="success">{achievement.level}</Badge>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {achievement.points}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openModal(achievement)}
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(achievement.id)}
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {filteredAchievements.length === 0 && (
+                <div className="text-center py-12">
+                  <Trophy className="mx-auto text-gray-400 mb-4" size={48} />
+                  <p className="text-gray-500 dark:text-gray-400">No achievements found</p>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingAchievement ? 'Edit Achievement' : 'Add New Achievement'}>
         <form onSubmit={onSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Student ID"
-              name="studentId"
-              value={values.studentId}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.studentId}
-              touched={touched.studentId}
-              required
-              placeholder="e.g., STU001"
-            />
-            <Input
-              label="Student Name"
-              name="studentName"
-              value={values.studentName}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.studentName}
-              touched={touched.studentName}
-              required
-              placeholder="e.g., John Doe"
-            />
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Student</label>
+            <select
+              value={selectedStudentEmail}
+              onChange={(e) => {
+                handleStudentSelect(e.target.value);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              required={!editingAchievement}
+            >
+              <option value="">Choose a student...</option>
+              {registeredStudents.map((student) => (
+                <option key={student.id} value={student.email}>
+                  {student.name} ({student.rollNumber})
+                </option>
+              ))}
+            </select>
+            {errors.studentEmail && touched.studentEmail && (
+              <p className="text-red-500 text-sm mt-1">{errors.studentEmail}</p>
+            )}
           </div>
 
           <Input

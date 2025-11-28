@@ -5,15 +5,16 @@ import { Card, CardHeader, CardBody } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Award, Trophy, TrendingUp, Calendar, Medal, Star, Download } from 'lucide-react';
 import { Button } from '../common/Button';
+import { jsPDF } from 'jspdf';
 
 export const StudentDashboard = () => {
   const { user } = useAuth();
-  const { achievements, getStudentAchievements, getTotalPoints, categories } = useAchievements();
+  const { achievements, categories } = useAchievements();
   const [filterCategory, setFilterCategory] = useState('');
   const [sortBy, setSortBy] = useState('date');
 
   const studentAchievements = useMemo(() => {
-    let filtered = getStudentAchievements(user.id);
+    let filtered = achievements.filter((a) => a.studentEmail === user.email || a.studentId === user.id);
 
     if (filterCategory) {
       filtered = filtered.filter((a) => a.category === filterCategory);
@@ -27,11 +28,11 @@ export const StudentDashboard = () => {
       }
       return 0;
     });
-  }, [getStudentAchievements, user.id, filterCategory, sortBy]);
+  }, [achievements, user.email, user.id, filterCategory, sortBy]);
 
   const stats = useMemo(() => {
     const total = studentAchievements.length;
-    const totalPoints = getTotalPoints(user.id);
+    const totalPoints = studentAchievements.reduce((sum, a) => sum + a.points, 0);
     const withCertificate = studentAchievements.filter((a) => a.certificate).length;
     const recentMonth = studentAchievements.filter((a) => {
       const date = new Date(a.date);
@@ -52,27 +53,152 @@ export const StudentDashboard = () => {
       recentMonth,
       categoryBreakdown,
     };
-  }, [studentAchievements, getTotalPoints, user.id, categories]);
+  }, [studentAchievements, categories]);
 
   const generateReport = () => {
-    const reportData = {
-      studentName: user.name,
-      studentId: user.id,
-      generatedDate: new Date().toLocaleDateString(),
-      totalAchievements: stats.total,
-      totalPoints: stats.totalPoints,
-      achievements: studentAchievements,
+    const pdf = new jsPDF();
+    let yPosition = 20;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const maxWidth = pageWidth - 2 * margin;
+
+    // Helper function to add text with word wrapping
+    const addWrappedText = (text, x, y, maxWidth, fontSize = 11) => {
+      pdf.setFontSize(fontSize);
+      const lines = pdf.splitTextToSize(text, maxWidth);
+      pdf.text(lines, x, y);
+      return y + lines.length * (fontSize / 2.5);
     };
 
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${user.name.replace(/\s+/g, '_')}_achievements_report.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Check if we need a new page
+    const checkPageBreak = (requiredSpace) => {
+      if (yPosition + requiredSpace > pageHeight - 10) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+    };
+
+    // Title
+    pdf.setFontSize(20);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Achievement Report', margin, yPosition);
+    yPosition += 15;
+
+    // Student Information
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Student Information', margin, yPosition);
+    yPosition += 8;
+
+    pdf.setFontSize(11);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Name: ${user.name}`, margin, yPosition);
+    yPosition += 6;
+    pdf.text(`Email: ${user.email}`, margin, yPosition);
+    yPosition += 6;
+    pdf.text(`Roll Number: ${user.id}`, margin, yPosition);
+    yPosition += 6;
+    pdf.text(`Generated Date: ${new Date().toLocaleDateString()}`, margin, yPosition);
+    yPosition += 12;
+
+    // Statistics
+    checkPageBreak(25);
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(12);
+    pdf.text('Summary Statistics', margin, yPosition);
+    yPosition += 8;
+
+    pdf.setFont(undefined, 'normal');
+    pdf.setFontSize(11);
+    pdf.text(`Total Achievements: ${stats.total}`, margin, yPosition);
+    yPosition += 6;
+    pdf.text(`Total Points: ${stats.totalPoints}`, margin, yPosition);
+    yPosition += 6;
+    pdf.text(`Certificates Received: ${stats.withCertificate}`, margin, yPosition);
+    yPosition += 6;
+    pdf.text(`Recent Achievements (30 days): ${stats.recentMonth}`, margin, yPosition);
+    yPosition += 12;
+
+    // Category Breakdown
+    checkPageBreak(30);
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(12);
+    pdf.text('Category Breakdown', margin, yPosition);
+    yPosition += 8;
+
+    pdf.setFont(undefined, 'normal');
+    pdf.setFontSize(10);
+    stats.categoryBreakdown.forEach((item) => {
+      pdf.text(`${item.category}: ${item.count}`, margin + 5, yPosition);
+      yPosition += 5;
+    });
+    yPosition += 8;
+
+    // Achievements List
+    if (studentAchievements.length > 0) {
+      checkPageBreak(20);
+      pdf.setFont(undefined, 'bold');
+      pdf.setFontSize(12);
+      pdf.text('Detailed Achievements', margin, yPosition);
+      yPosition += 10;
+
+      studentAchievements.forEach((achievement, index) => {
+        checkPageBreak(30);
+
+        // Achievement title
+        pdf.setFont(undefined, 'bold');
+        pdf.setFontSize(11);
+        yPosition = addWrappedText(`${index + 1}. ${achievement.title}`, margin, yPosition, maxWidth, 11);
+        yPosition += 2;
+
+        // Achievement details
+        pdf.setFont(undefined, 'normal');
+        pdf.setFontSize(10);
+
+        pdf.text(`Category: ${achievement.category}`, margin + 5, yPosition);
+        yPosition += 5;
+
+        pdf.text(`Level: ${achievement.level}`, margin + 5, yPosition);
+        yPosition += 5;
+
+        pdf.text(`Date: ${new Date(achievement.date).toLocaleDateString()}`, margin + 5, yPosition);
+        yPosition += 5;
+
+        pdf.text(`Points: ${achievement.points}`, margin + 5, yPosition);
+        yPosition += 5;
+
+        if (achievement.certificate) {
+          pdf.setTextColor(0, 128, 0);
+          pdf.text('✓ Certificate Received', margin + 5, yPosition);
+          pdf.setTextColor(0, 0, 0);
+          yPosition += 5;
+        }
+
+        // Description
+        if (achievement.description) {
+          yPosition = addWrappedText(`Description: ${achievement.description}`, margin + 5, yPosition + 2, maxWidth - 5, 9);
+        }
+
+        yPosition += 8;
+      });
+    } else {
+      pdf.setFont(undefined, 'normal');
+      pdf.setFontSize(11);
+      pdf.text('No achievements recorded yet.', margin, yPosition);
+    }
+
+    // Footer
+    pdf.setFontSize(9);
+    pdf.setTextColor(128, 128, 128);
+    pdf.text(
+      `Achievement Tracker Report - ${user.name}`,
+      margin,
+      pageHeight - 10
+    );
+
+    // Save PDF
+    pdf.save(`${user.name.replace(/\s+/g, '_')}_achievements_report.pdf`);
   };
 
   return (

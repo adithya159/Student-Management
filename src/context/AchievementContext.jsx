@@ -38,7 +38,8 @@ export const AchievementProvider = ({ children }) => {
       {
         id: '1',
         studentId: 'STU001',
-        studentName: 'John Doe',
+        studentName: 'అర్జున్',
+        studentEmail: 'arjun@student.com',
         title: 'First Place in Science Fair',
         category: 'Academic',
         description: 'Won first place in the regional science fair with a project on renewable energy',
@@ -50,7 +51,8 @@ export const AchievementProvider = ({ children }) => {
       {
         id: '2',
         studentId: 'STU001',
-        studentName: 'John Doe',
+        studentName: 'అర్జున్',
+        studentEmail: 'arjun@student.com',
         title: 'Basketball Championship',
         category: 'Sports',
         description: 'Led the school team to victory in inter-school basketball tournament',
@@ -62,7 +64,8 @@ export const AchievementProvider = ({ children }) => {
       {
         id: '3',
         studentId: 'STU002',
-        studentName: 'Jane Smith',
+        studentName: 'రవి',
+        studentEmail: 'ravi@student.com',
         title: 'Art Exhibition Award',
         category: 'Arts & Culture',
         description: 'Featured artwork in state-level art exhibition',
@@ -74,7 +77,8 @@ export const AchievementProvider = ({ children }) => {
       {
         id: '4',
         studentId: 'STU002',
-        studentName: 'Jane Smith',
+        studentName: 'రవి',
+        studentEmail: 'ravi@student.com',
         title: 'Student Council President',
         category: 'Leadership',
         description: 'Elected as student council president for academic year 2024',
