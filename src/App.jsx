@@ -1,41 +1,48 @@
-import React, { useState } from 'react';
-import Navbar from './components/Navbar.jsx';
-import Home from './components/Home.jsx';
-import Browse from './components/Browse.jsx';
-import Playlists from './components/Playlists.jsx';
-import Account from './components/Account.jsx';
-import LoginPage from './components/LoginPage.jsx';
-import RegisterPage from './components/RegisterPage.jsx';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { AchievementProvider } from './context/AchievementContext';
+import { Login } from './components/auth/Login';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import { StudentDashboard } from './components/student/StudentDashboard';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Layout } from './components/layout/Layout';
 
-const App = () => {
-  const [currentPage, setCurrentPage] = useState('login'); // start with login page
-
-  const appStyle = {
-    width: '100vw',
-    minHeight: '100vh',
-    backgroundColor: '#FFC0CB',
-    color: 'black',
-    fontFamily: 'Arial, sans-serif',
-    margin: 0,
-    padding: 0,
-    display: 'flex',
-    flexDirection: 'column',
-  };
-
+function App() {
   return (
-    <div style={appStyle}>
-      {currentPage !== 'login' && currentPage !== 'register' && (
-        <Navbar setCurrentPage={setCurrentPage} />
-      )}
-
-      {currentPage === 'home' && <Home />}
-      {currentPage === 'browse' && <Browse />}
-      {currentPage === 'playlists' && <Playlists />}
-      {currentPage === 'account' && <Account />}
-      {currentPage === 'login' && <LoginPage setCurrentPage={setCurrentPage} />}
-      {currentPage === 'register' && <RegisterPage setCurrentPage={setCurrentPage} />}
-    </div>
+    <ThemeProvider>
+      <AuthProvider>
+        <AchievementProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Layout>
+                      <AdminDashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/student"
+                element={
+                  <ProtectedRoute requiredRole="student">
+                    <Layout>
+                      <StudentDashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </Router>
+        </AchievementProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
-};
+}
 
 export default App;
